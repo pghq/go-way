@@ -1,23 +1,20 @@
 package poco
 
 import (
-	"github.com/hashicorp/go-memdb"
 	"github.com/pghq/go-museum/museum/diagnostic/errors"
 )
 
 // Get a location by country and postalCode
-func (s *LocationService) Get(key LocationKey) (*Location, error) {
-	if !s.cache.Test(key.Bytes()) {
+func (s *LocationService) Get(country, postalCode string) (*Location, error) {
+	id := NewLocationId(country, postalCode)
+	if !s.cache.Test(id.Bytes()) {
 		return nil, errors.NewNoContent()
 	}
 
-	raw, err := s.db.Txn(false).First("locations", "id", key.Country, key.PostalCode)
-	if err != nil {
-		if errors.Is(err, memdb.ErrNotFound) {
-			return nil, errors.NewNoContent(err)
-		}
-		return nil, errors.Wrap(err)
+	raw, err := s.db.Txn(false).First("locations", "id", id.Country(), id.PostalCode())
+	if err == nil && raw != nil {
+		return raw.(*Location), nil
 	}
 
-	return raw.(*Location), nil
+	return nil, errors.NewNoContent(err)
 }

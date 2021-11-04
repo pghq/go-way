@@ -50,16 +50,15 @@ func (s *LocationService) Refresh(ctx context.Context) error {
 		return errors.Newf("unexpected number of files in zip, %d found", len(zr.File))
 	}
 
+	var records [][]string
 	f, err := zr.File[0].Open()
-	if err != nil {
-		return errors.Wrap(err)
+	if err == nil {
+		defer f.Close()
+		r := csv.NewReader(f)
+		r.Comma = '\t'
+		records, err = r.ReadAll()
 	}
-	defer f.Close()
 
-	r := csv.NewReader(f)
-	r.Comma = '\t'
-
-	records, err := r.ReadAll()
 	if err != nil {
 		return errors.Wrap(err)
 	}
@@ -87,15 +86,15 @@ func (s *LocationService) Refresh(ctx context.Context) error {
 			PostalCode:         record[1],
 			PlaceName:          record[2],
 			AdministrativeName: record[3],
-			Latitude:           longitude,
-			Longitude:          latitude,
+			Latitude:           latitude,
+			Longitude:          longitude,
 		}
 
 		if err = tx.Insert("locations", &location); err != nil {
 			return errors.Wrap(err)
 		}
 
-		cache.Add(location.Key().Bytes())
+		cache.Add(location.Id().Bytes())
 	}
 
 	tx.Commit()

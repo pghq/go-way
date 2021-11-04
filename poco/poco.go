@@ -61,8 +61,8 @@ func New(opts ...Option) (*Client, error) {
 						Unique: true,
 						Indexer: &memdb.CompoundIndex{
 							Indexes: []memdb.Indexer{
-								&memdb.StringFieldIndex{Field: "Country"},
-								&memdb.StringFieldIndex{Field: "PostalCode"},
+								&memdb.StringFieldIndex{Field: "Country", Lowercase: true},
+								&memdb.StringFieldIndex{Field: "PostalCode", Lowercase: true},
 							},
 						},
 					},

@@ -1,7 +1,6 @@
 package poco
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -15,24 +14,41 @@ type Location struct {
 	Longitude          float64
 }
 
-func (l *Location) Key() *LocationKey {
-	return &LocationKey{
-		Country:    l.Country,
-		PostalCode: l.PostalCode,
+// Id is the location id
+func (l *Location) Id() *LocationId {
+	return NewLocationId(l.Country, l.PostalCode)
+}
+
+// LocationId is the id for the location
+type LocationId struct {
+	country    string
+	postalCode string
+}
+
+// NewLocationId creates an instance of the location id
+func NewLocationId(country, postalCode string) *LocationId{
+	return &LocationId{
+		country:    country,
+		postalCode: postalCode,
 	}
 }
 
-type LocationKey struct {
-	Country    string
-	PostalCode string
+// Country gets the normalized country code for the location
+func (id *LocationId) Country() string{
+	return strings.ToLower(id.country)
 }
 
-func (k *LocationKey) String() string {
-	return fmt.Sprintf("%s:%s", strings.ToLower(k.Country), strings.ToLower(k.PostalCode))
+// PostalCode gets the normalized postal code for the location
+func (id *LocationId) PostalCode() string{
+	return strings.ToLower(id.postalCode)
 }
 
-func (k *LocationKey) Bytes() []byte {
-	return []byte(k.String())
+func (id *LocationId) String() string {
+	return id.Country() + id.PostalCode()
+}
+
+func (id *LocationId) Bytes() []byte {
+	return []byte(id.String())
 }
 
 // LocationService is a service for retrieving locations by postal codes.
