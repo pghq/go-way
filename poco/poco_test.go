@@ -183,6 +183,36 @@ func TestLocationService_Envelope(t *testing.T) {
 
 }
 
+func TestParseLocation(t *testing.T) {
+	t.Run("notifies on bad location", func(t *testing.T) {
+		id, err := ParseLocation("")
+		assert.NotNil(t, err)
+		assert.Equal(t, "", id.String())
+	})
+
+	t.Run("notifies on success", func(t *testing.T) {
+		id, err := ParseLocation("country:us")
+		assert.Nil(t, err)
+		assert.Equal(t, Country("us").String(), id.String())
+
+		id, err = ParseLocation("state:us,ny")
+		assert.Nil(t, err)
+		assert.Equal(t, State("us", "ny").String(), id.String())
+
+		id, err = ParseLocation("postal:us,20017")
+		assert.Nil(t, err)
+		assert.Equal(t, PostalCode("us", "20017").String(), id.String())
+
+		id, err = ParseLocation("county:us,ny,kings")
+		assert.Nil(t, err)
+		assert.Equal(t, County("us", "ny", "kings").String(), id.String())
+
+		id, err = ParseLocation("city:us,ny,brooklyn")
+		assert.Nil(t, err)
+		assert.Equal(t, City("us", "ny", "brooklyn").String(), id.String())
+	})
+}
+
 func serve(path string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, path)
