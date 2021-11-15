@@ -1,7 +1,10 @@
 package poco
 
 import (
+	"fmt"
 	"strings"
+
+	"github.com/pghq/go-museum/museum/diagnostic/errors"
 )
 
 // Location is an instance of a GeoNames location
@@ -54,28 +57,46 @@ type LocationId struct {
 	county     string
 }
 
+// IsCountry checks if id is of country type
 func (id LocationId) IsCountry() bool {
 	return id.country != "" && id == Country(id.country)
 }
 
+// IsState checks if id is of state type
 func (id LocationId) IsState() bool {
 	return id.state != "" && id == State(id.country, id.state)
 }
 
+// IsCounty checks if id is of county type
 func (id LocationId) IsCounty() bool {
 	return id.county != "" && id == County(id.country, id.state, id.county)
 }
 
+// IsCity checks if id is of city type
 func (id LocationId) IsCity() bool {
 	return id.city != "" && id == City(id.country, id.state, id.city)
 }
 
+// IsPostal checks if id is of postal type
 func (id LocationId) IsPostal() bool {
 	return id.postalCode != "" && id == PostalCode(id.country, id.postalCode)
 }
 
 func (id LocationId) String() string {
-	return strings.Join([]string{id.country, id.state, id.county, id.city, id.postalCode}, ":")
+	switch {
+	case id.IsCity():
+		return fmt.Sprintf("city:%s,%s,%s", id.country, id.state, id.city)
+	case id.IsCounty():
+		return fmt.Sprintf("county:%s,%s,%s", id.country, id.state, id.county)
+	case id.IsPostal():
+		return fmt.Sprintf("postal:%s,%s", id.country, id.postalCode)
+	case id.IsState():
+		return fmt.Sprintf("city:%s,%s", id.country, id.state)
+	case id.IsCountry():
+		return fmt.Sprintf("city:%s", id.country)
+	}
+
+	return ""
 }
 
 func (id LocationId) Bytes() []byte {
@@ -121,6 +142,28 @@ func PostalCode(country, postalCode string) LocationId {
 		country:    strings.ToLower(country),
 		postalCode: postalCode,
 	}
+}
+
+// ParseLocation parses a location string
+func ParseLocation(s string) (LocationId, error) {
+	words := strings.Split(strings.ToLower(s), ":")
+	if len(words) == 2 {
+		areas := strings.Split(words[1], ",")
+		switch {
+		case len(areas) == 1 && words[0] == "country":
+			return Country(areas[0]), nil
+		case len(areas) == 2 && words[0] == "state":
+			return State(areas[0], areas[1]), nil
+		case len(areas) == 2 && words[0] == "postal":
+			return PostalCode(areas[0], areas[1]), nil
+		case len(areas) == 3 && words[0] == "county":
+			return County(areas[0], areas[1], areas[2]), nil
+		case len(areas) == 3 && words[0] == "city":
+			return City(areas[0], areas[1], areas[2]), nil
+		}
+	}
+
+	return LocationId{}, errors.Newf("bad location %s", s)
 }
 
 // LocationService is a service for retrieving locations by postal codes.
