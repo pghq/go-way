@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bits-and-blooms/bloom/v3"
@@ -16,7 +17,7 @@ import (
 
 const (
 	// DefaultRefreshTimeout is the default wait time for refreshing postal codes from GeoNames
-	DefaultRefreshTimeout = 30 * time.Second
+	DefaultRefreshTimeout = 60 * time.Second
 
 	// DefaultRefreshLocation is the default origin location for the GeoName export
 	DefaultRefreshLocation = "https://download.geonames.org/export/zip/allCountries.zip"
@@ -50,56 +51,74 @@ func (s *LocationService) Refresh(ctx context.Context) error {
 		return errors.Newf("unexpected number of files in zip, %d found", len(zr.File))
 	}
 
-	var records [][]string
-	f, err := zr.File[0].Open()
-	if err == nil {
+	tx := s.db.Txn(true)
+	defer tx.Abort()
+
+	locations := make(map[string]*Location)
+	var f io.ReadCloser
+	if f, err = zr.File[0].Open(); err == nil {
 		defer f.Close()
 		r := csv.NewReader(f)
 		r.Comma = '\t'
-		records, err = r.ReadAll()
+
+		var record []string
+		for {
+			record, err = r.Read()
+			if err != nil {
+				break
+			}
+
+			if len(record) != NumColumns {
+				return errors.Newf("unexpected number of columns in csv, %d found", len(record))
+			}
+
+			latitude, err := strconv.ParseFloat(record[9], 64)
+			if err != nil {
+				return errors.Wrap(err)
+			}
+
+			longitude, err := strconv.ParseFloat(record[10], 64)
+			if err != nil {
+				return errors.Wrap(err)
+			}
+
+			location := Location{
+				Country:    strings.ToLower(record[0]),
+				PostalCode: strings.ToLower(record[1]),
+				City:       strings.ToLower(record[2]),
+				State:      strings.ToLower(record[4]),
+				County:     strings.ToLower(record[5]),
+				Coordinate: Coordinate{
+					Latitude:  latitude,
+					Longitude: longitude,
+				},
+			}
+
+			if err = tx.Insert("locations", location); err != nil {
+				return errors.Wrap(err)
+			}
+
+			locations[location.Id().String()] = &location
+		}
 	}
 
-	if err != nil {
+	if err != nil && err != io.EOF {
 		return errors.Wrap(err)
 	}
 
-	tx := s.db.Txn(true)
-	defer tx.Abort()
-	cache := bloom.NewWithEstimates(uint(len(records)), BloomFalsePositiveRate)
-	for _, record := range records {
-		if len(record) != NumColumns {
-			return errors.Newf("unexpected number of columns in csv, %d found", len(record))
-		}
-
-		latitude, err := strconv.ParseFloat(record[9], 64)
-		if err != nil {
-			return errors.Wrap(err)
-		}
-
-		longitude, err := strconv.ParseFloat(record[10], 64)
-		if err != nil {
-			return errors.Wrap(err)
-		}
-
-		location := Location{
-			Country:            record[0],
-			PostalCode:         record[1],
-			PlaceName:          record[2],
-			AdministrativeName: record[3],
-			Latitude:           latitude,
-			Longitude:          longitude,
-		}
-
-		if err = tx.Insert("locations", &location); err != nil {
-			return errors.Wrap(err)
-		}
-
-		cache.Add(location.Id().Bytes())
+	filter := bloom.NewWithEstimates(uint(len(locations)), BloomFalsePositiveRate)
+	for _, location := range locations {
+		filter.Add(location.Id().Bytes())
+		filter.Add(location.CountryId().Bytes())
+		filter.Add(location.CountyId().Bytes())
+		filter.Add(location.StateId().Bytes())
+		filter.Add(location.CityId().Bytes())
 	}
 
-	tx.Commit()
-	s.cache = cache
 	_, _ = reader.Seek(0, io.SeekStart)
+
+	tx.Commit()
+	s.filter = filter
 	s.source = reader
 
 	return nil

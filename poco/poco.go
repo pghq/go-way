@@ -33,13 +33,16 @@ const (
 // Client allows interaction with services within the domain.
 type Client struct {
 	common service
+	errors chan error
 
 	Locations *LocationService
 }
 
 // New creates a new client instance.
 func New(opts ...Option) (*Client, error) {
-	c := &Client{}
+	c := &Client{
+		errors: make(chan error, 1),
+	}
 	c.common.conf = Config{
 		refreshTimeout:  DefaultRefreshTimeout,
 		refreshLocation: DefaultRefreshLocation,
@@ -61,8 +64,44 @@ func New(opts ...Option) (*Client, error) {
 						Unique: true,
 						Indexer: &memdb.CompoundIndex{
 							Indexes: []memdb.Indexer{
-								&memdb.StringFieldIndex{Field: "Country", Lowercase: true},
-								&memdb.StringFieldIndex{Field: "PostalCode", Lowercase: true},
+								&memdb.StringFieldIndex{Field: "Country"},
+								&memdb.StringFieldIndex{Field: "PostalCode"},
+							},
+						},
+					},
+					"country": {
+						Name:    "country",
+						Indexer: &memdb.StringFieldIndex{Field: "Country"},
+					},
+					"state": {
+						Name:         "state",
+						AllowMissing: true,
+						Indexer: &memdb.CompoundIndex{
+							Indexes: []memdb.Indexer{
+								&memdb.StringFieldIndex{Field: "Country"},
+								&memdb.StringFieldIndex{Field: "State"},
+							},
+						},
+					},
+					"county": {
+						Name:         "county",
+						AllowMissing: true,
+						Indexer: &memdb.CompoundIndex{
+							Indexes: []memdb.Indexer{
+								&memdb.StringFieldIndex{Field: "Country"},
+								&memdb.StringFieldIndex{Field: "State"},
+								&memdb.StringFieldIndex{Field: "County"},
+							},
+						},
+					},
+					"city": {
+						Name:         "city",
+						AllowMissing: true,
+						Indexer: &memdb.CompoundIndex{
+							Indexes: []memdb.Indexer{
+								&memdb.StringFieldIndex{Field: "Country"},
+								&memdb.StringFieldIndex{Field: "State"},
+								&memdb.StringFieldIndex{Field: "City"},
 							},
 						},
 					},
@@ -137,7 +176,7 @@ func RefreshLocation(origin string) Option {
 type service struct {
 	conf   Config
 	client client
-	cache  *bloom.BloomFilter
+	filter *bloom.BloomFilter
 	db     *memdb.MemDB
 	source *bytes.Reader
 }

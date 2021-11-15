@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/bits-and-blooms/bloom/v3 v3.1.0
+	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551
 	github.com/hashicorp/go-memdb v1.3.2
 	github.com/pghq/go-museum v0.0.26
 	github.com/stretchr/testify v1.7.0
