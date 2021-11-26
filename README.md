@@ -1,5 +1,5 @@
 # go-way
-Golang geolocation library.
+Golang postal level geo-lookup library.
 
 ## Installation
 
