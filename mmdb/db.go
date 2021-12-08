@@ -1,4 +1,4 @@
-package maxmind
+package mmdb
 
 import (
 	"archive/tar"
@@ -7,11 +7,12 @@ import (
 	"context"
 	"io/ioutil"
 	"net"
+	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/dgraph-io/ristretto"
 	"github.com/oschwald/geoip2-golang"
+	"github.com/pghq/go-ark"
 	"github.com/pghq/go-tea"
 
 	"github.com/pghq/go-way/client"
@@ -20,43 +21,42 @@ import (
 const (
 	// positiveTTL is the positive ttl for search queries
 	positiveTTL = 30 * time.Minute
-
-	// negativeTTL is the negative ttl for search queries
-	negativeTTL = 90 * time.Minute
 )
 
-// DB instance for maxmind
+// DB instance for MaxMind
 type DB struct {
-	mdb   *geoip2.Reader
-	cache *ristretto.Cache
+	Size int
+	mdb  *geoip2.Reader
+	conn *ark.KVSConn
 }
 
 // Get city
 func (db *DB) Get(ip net.IP) (*geoip2.City, error) {
-	v, present := db.cache.Get(ip.String())
-	if present {
-		if err, ok := v.(error); ok {
-			return nil, tea.Error(err)
+	if db == nil {
+		return nil, tea.NewNoContent("db not ready")
+	}
+
+	var city *geoip2.City
+	return city, db.conn.Do(context.Background(), func(tx *ark.KVSTxn) error {
+		var cy geoip2.City
+		if _, err := tx.Get([]byte(ip.String()), &cy).Resolve(); err == nil {
+			city = &cy
+			return nil
 		}
 
-		if city, ok := v.(*geoip2.City); ok {
-			return city, nil
+		c, err := db.mdb.City(ip)
+		if err != nil {
+			return tea.Error(err)
 		}
-	}
 
-	city, err := db.mdb.City(ip)
-	if err != nil {
-		return nil, tea.Error(err)
-	}
+		if c == nil || c.City.GeoNameID == 0 {
+			return tea.NewNoContent("not found")
+		}
 
-	if city == nil || city.City.GeoNameID == 0 {
-		err := tea.NewNoContent()
-		db.cache.SetWithTTL(ip.String(), err, 1, negativeTTL)
-		return nil, err
-	}
-
-	db.cache.SetWithTTL(ip.String(), city, 1, positiveTTL)
-	return city, nil
+		city = c
+		tx.InsertWithTTL([]byte(ip.String()), city, positiveTTL)
+		return nil
+	})
 }
 
 // Close the db
@@ -85,11 +85,10 @@ func Open(ctx context.Context, uri string) (*DB, error) {
 			return nil, tea.Error(err)
 		}
 
-		if strings.HasPrefix(header.Name, ".") {
-			continue
+		base := filepath.Base(header.Name)
+		if !strings.HasPrefix(base, ".") && strings.HasSuffix(base, ".mmdb") {
+			break
 		}
-
-		break
 	}
 
 	b, _ = ioutil.ReadAll(tr)
@@ -101,11 +100,10 @@ func Open(ctx context.Context, uri string) (*DB, error) {
 	db := DB{
 		mdb: mdb,
 	}
-	db.cache, _ = ristretto.NewCache(&ristretto.Config{
-		NumCounters: 1e7,
-		MaxCost:     1 << 30,
-		BufferItems: 64,
-	})
+
+	db.Size = int(db.mdb.Metadata().NodeCount)
+	dm := ark.Open()
+	db.conn, _ = dm.ConnectKVS(ctx, "inmem")
 
 	return &db, nil
 }

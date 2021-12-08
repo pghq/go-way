@@ -1,4 +1,4 @@
-package geonames
+package gndb
 
 import (
 	"fmt"
@@ -14,13 +14,13 @@ const earthRadiusKm = 6371.01
 
 // Location is an instance of a GeoNames location
 type Location struct {
-	bounder *s2.RectBounder
+	bounder *s2.RectBounder `db:"-"`
 	Coordinate
-	Country      string
-	PostalCode   string
-	City         string
-	Subdivision1 string
-	Subdivision2 string
+	Country      string `db:"country"`
+	PostalCode   string `db:"postal_code"`
+	City         string `db:"city"`
+	Subdivision1 string `db:"subdivision1"`
+	Subdivision2 string `db:"subdivision2"`
 }
 
 // Add to the envelope
@@ -67,8 +67,8 @@ type LocationId struct {
 	country    string
 	city       string
 	postalCode string
-	Primary    string
-	Secondary  string
+	primary    string
+	secondary  string
 }
 
 // IsCountry checks if id is of country type
@@ -78,17 +78,17 @@ func (id LocationId) IsCountry() bool {
 
 // IsPrimary checks if id is of Primary type
 func (id LocationId) IsPrimary() bool {
-	return id.Primary != "" && id == Primary(id.country, id.Primary)
+	return id.primary != "" && id == Primary(id.country, id.primary)
 }
 
 // IsSecondary checks if id is of Secondary type
 func (id LocationId) IsSecondary() bool {
-	return id.Secondary != "" && id == Secondary(id.country, id.Primary, id.Secondary)
+	return id.secondary != "" && id == Secondary(id.country, id.primary, id.secondary)
 }
 
 // IsCity checks if id is of city type
 func (id LocationId) IsCity() bool {
-	return id.city != "" && id == City(id.country, id.Primary, id.city)
+	return id.city != "" && id == City(id.country, id.primary, id.city)
 }
 
 // IsPostal checks if id is of postal type
@@ -99,13 +99,13 @@ func (id LocationId) IsPostal() bool {
 func (id LocationId) String() string {
 	switch {
 	case id.IsCity():
-		return fmt.Sprintf("city:%s,%s,%s", id.country, id.Primary, id.city)
+		return fmt.Sprintf("city:%s,%s,%s", id.country, id.primary, id.city)
 	case id.IsSecondary():
-		return fmt.Sprintf("subdivision:%s,%s,%s", id.country, id.Primary, id.Secondary)
+		return fmt.Sprintf("subdivision:%s,%s,%s", id.country, id.primary, id.secondary)
 	case id.IsPostal():
 		return fmt.Sprintf("postal:%s,%s", id.country, id.postalCode)
 	case id.IsPrimary():
-		return fmt.Sprintf("subdivision:%s,%s", id.country, id.Primary)
+		return fmt.Sprintf("subdivision:%s,%s", id.country, id.primary)
 	case id.IsCountry():
 		return fmt.Sprintf("city:%s", id.country)
 	}
@@ -124,7 +124,7 @@ func Country(country string) LocationId {
 func Primary(country, subdivision1 string) LocationId {
 	return LocationId{
 		country: strings.ToLower(country),
-		Primary: strings.ToLower(subdivision1),
+		primary: strings.ToLower(subdivision1),
 	}
 }
 
@@ -132,16 +132,16 @@ func Primary(country, subdivision1 string) LocationId {
 func Secondary(country, subdivision1, subdivision2 string) LocationId {
 	return LocationId{
 		country:   strings.ToLower(country),
-		Primary:   strings.ToLower(subdivision1),
-		Secondary: strings.ToLower(subdivision2),
+		primary:   strings.ToLower(subdivision1),
+		secondary: strings.ToLower(subdivision2),
 	}
 }
 
 // City creates a city location id
-func City(country, Primary, city string) LocationId {
+func City(country, primary, city string) LocationId {
 	return LocationId{
 		country: strings.ToLower(country),
-		Primary: strings.ToLower(Primary),
+		primary: strings.ToLower(primary),
 		city:    strings.ToLower(city),
 	}
 }

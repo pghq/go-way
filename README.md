@@ -17,17 +17,25 @@ import "github.com/pghq/go-way"
 To create a new client:
 
 ```
-client, err := way.NewClient()
+radar := way.NewRadar()
+
+// optionally wait for background refresh to occur
+radar.Wait()
+if err := radar.Error(); err != nil{
+    panic(err)
+}
+
+loc, err := radar.IP("1.2.3.4")
 if err != nil{
     panic(err)
 }
 
-loc, err := client.Locations.IP("1.2.3.4")
+loc, err = radar.City("US", "NY", "Brooklyn")
 if err != nil{
     panic(err)
 }
 
-loc, err = client.Locations.City("US", "NY", "Brooklyn")
+loc, err = radar.Postal("US", "NY", "10027")
 if err != nil{
     panic(err)
 }

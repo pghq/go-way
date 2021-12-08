@@ -14,50 +14,8 @@
 package way
 
 import (
-	"context"
 	"time"
-
-	"github.com/pghq/go-tea"
-
-	"github.com/pghq/go-way/geonames"
-	"github.com/pghq/go-way/maxmind"
 )
-
-const (
-	// DefaultGeonamesLocation is the default origin location for the GeoName export
-	DefaultGeonamesLocation = "https://download.geonames.org/export/zip/allCountries.zip"
-
-	// DefaultMaxmindLocation is the default origin location for the Maxmind export
-	DefaultMaxmindLocation = "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&license_key=YOUR_LICENSE_KEY&suffix=tar.gz"
-)
-
-// Client allows interaction with services within the domain.
-type Client struct {
-	common service
-
-	Locations *LocationService
-}
-
-// NewClient creates a new client instance.
-func NewClient(opts ...Option) (*Client, error) {
-	c := Client{}
-	c.common.conf = Config{
-		refreshTimeout:   DefaultRefreshTimeout,
-		geonamesLocation: DefaultGeonamesLocation,
-		maxmindLocation:  DefaultMaxmindLocation,
-	}
-
-	for _, opt := range opts {
-		opt.Apply(&c.common.conf)
-	}
-
-	c.Locations = (*LocationService)(&c.common)
-	if err := c.Locations.Refresh(context.Background()); err != nil {
-		return nil, tea.Error(err)
-	}
-
-	return &c, nil
-}
 
 // Config for the client
 type Config struct {
@@ -123,11 +81,4 @@ func (o maxmindKey) Apply(conf *Config) {
 // MaxmindKey configures the maxmind licence key
 func MaxmindKey(key string) Option {
 	return maxmindKey(key)
-}
-
-// service is a shared configuration for all services within the domain.
-type service struct {
-	conf Config
-	gdb  *geonames.DB
-	mdb  *maxmind.DB
 }
