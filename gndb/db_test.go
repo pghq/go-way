@@ -1,4 +1,4 @@
-package geonames
+package gndb
 
 import (
 	"context"
@@ -10,6 +10,14 @@ import (
 )
 
 func TestDB_Get(t *testing.T) {
+	t.Parallel()
+
+	t.Run("not ready", func(t *testing.T) {
+		var db *DB
+		_, err := db.Get(LocationId{})
+		assert.NotNil(t, err)
+	})
+
 	t.Run("bad location", func(t *testing.T) {
 		_, err := Open(context.TODO(), "../testdata/sample.zip")
 		assert.NotNil(t, err)
@@ -51,7 +59,7 @@ func TestDB_Get(t *testing.T) {
 	t.Run("missing index", func(t *testing.T) {
 		s := serve("../testdata/missing-index.zip")
 		_, err := Open(context.TODO(), s.URL)
-		assert.NotNil(t, err)
+		assert.Nil(t, err)
 	})
 
 	t.Run("bad quote", func(t *testing.T) {
@@ -74,12 +82,13 @@ func TestDB_Get(t *testing.T) {
 			assert.Equal(t, 0.0, loc.Center().Longitude)
 		})
 
-		t.Run("not found", func(t *testing.T) {
+		t.Run("not found postal", func(t *testing.T) {
 			_, err := db.Get(PostalCode("US", "999999"))
 			assert.NotNil(t, err)
+		})
 
-			db.cache.Wait()
-			_, err = db.Get(PostalCode("US", "999999"))
+		t.Run("not found country", func(t *testing.T) {
+			_, err := db.Get(Country("USA"))
 			assert.NotNil(t, err)
 		})
 	})
@@ -88,6 +97,7 @@ func TestDB_Get(t *testing.T) {
 		loc, err := db.Get(City("US", "dc", "washington"))
 		assert.Nil(t, err)
 		assert.NotNil(t, loc)
+
 		assert.Equal(t, 38.90095, loc.Center().Latitude)
 		assert.Equal(t, -77.0118, loc.Center().Longitude)
 		assert.Equal(t, 10.505164843148291, loc.Radius())
@@ -111,14 +121,15 @@ func TestDB_Get(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, loc)
 
-		db.cache.Wait()
-		loc, err = db.Get(Primary("US", "ny"))
+		loc, err = db.Get(PostalCode("US", "11201"))
 		assert.Nil(t, err)
 		assert.NotNil(t, loc)
 	})
 }
 
 func TestParseId(t *testing.T) {
+	t.Parallel()
+
 	t.Run("notifies on bad location", func(t *testing.T) {
 		id, err := ParseId("")
 		assert.NotNil(t, err)

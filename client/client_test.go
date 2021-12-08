@@ -10,6 +10,8 @@ import (
 )
 
 func TestGet(t *testing.T) {
+	t.Parallel()
+
 	t.Run("nil context", func(t *testing.T) {
 		_, err := Get(nil, "/tests")
 		assert.NotNil(t, err)

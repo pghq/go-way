@@ -1,4 +1,4 @@
-package maxmind
+package mmdb
 
 import (
 	"archive/tar"
@@ -9,11 +9,20 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDB_Get(t *testing.T) {
+	t.Parallel()
+
+	t.Run("not ready", func(t *testing.T) {
+		var db *DB
+		_, err := db.Get(net.ParseIP("1.2.3.4"))
+		assert.NotNil(t, err)
+	})
+
 	t.Run("bad open", func(t *testing.T) {
 		_, err := Open(context.TODO(), "does-not-exist")
 		assert.NotNil(t, err)
@@ -69,8 +78,10 @@ func TestDB_Get(t *testing.T) {
 		assert.NotNil(t, err)
 	})
 
-	s := serve("../testdata/maxmind-test.tgz")
-	db, _ := Open(context.TODO(), s.URL)
+	s := serve("../testdata/GeoLite2-City.tgz")
+	db, err := Open(context.TODO(), s.URL)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
 
 	t.Run("closed db", func(t *testing.T) {
 		db, _ := Open(context.TODO(), s.URL)
@@ -83,19 +94,17 @@ func TestDB_Get(t *testing.T) {
 	t.Run("not found", func(t *testing.T) {
 		_, err := db.Get(net.ParseIP("192.168.1.1"))
 		assert.NotNil(t, err)
-
-		db.cache.Wait()
-		_, err = db.Get(net.ParseIP("192.168.1.1"))
-		assert.NotNil(t, err)
 	})
 
 	t.Run("found", func(t *testing.T) {
 		city, err := db.Get(net.ParseIP("81.2.69.142"))
 		assert.Nil(t, err)
 		assert.NotNil(t, city)
+	})
 
-		db.cache.Wait()
-		city, err = db.Get(net.ParseIP("81.2.69.142"))
+	t.Run("found cached", func(t *testing.T) {
+		<-time.After(500 * time.Millisecond)
+		city, err := db.Get(net.ParseIP("81.2.69.142"))
 		assert.Nil(t, err)
 		assert.NotNil(t, city)
 	})

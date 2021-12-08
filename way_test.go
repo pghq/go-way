@@ -7,21 +7,26 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pghq/go-tea"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNewClient(t *testing.T) {
+func TestNewRadar(t *testing.T) {
+	t.Parallel()
+
 	s := serve("testdata/sample.zip")
 
 	t.Run("should notify on errors", func(t *testing.T) {
 		t.Run("bad geonames refresh", func(t *testing.T) {
-			_, err := NewClient(GeonamesLocation("testdata/sample.zip"))
-			assert.NotNil(t, err)
+			r := NewRadar(GeonamesLocation("testdata/sample.zip"))
+			r.Wait()
+			assert.NotNil(t, r.Error())
 		})
 
 		t.Run("bad maxmind refresh", func(t *testing.T) {
-			_, err := NewClient(GeonamesLocation(s.URL), MaxmindLocation("testdata/maxmind-test.tgz"))
-			assert.NotNil(t, err)
+			r := NewRadar(GeonamesLocation(s.URL), MaxmindLocation("testdata/GeoLite2-City.tgz"))
+			r.Wait()
+			assert.NotNil(t, r.Error())
 		})
 
 		t.Run("bad response code", func(t *testing.T) {
@@ -29,64 +34,80 @@ func TestNewClient(t *testing.T) {
 				w.WriteHeader(http.StatusNoContent)
 			}))
 
-			_, err := NewClient(GeonamesLocation(s.URL))
-			assert.NotNil(t, err)
+			r := NewRadar(GeonamesLocation(s.URL))
+			r.Wait()
+			assert.NotNil(t, r.Error())
 		})
 	})
 
+	t.Run("can send background errors", func(t *testing.T) {
+		r := NewRadar(GeonamesLocation(s.URL))
+		r.sendError(tea.NewError("an error has occurred"))
+		r.sendError(tea.NewError("an error has occurred"))
+	})
+
 	t.Run("can create new instance", func(t *testing.T) {
-		c, err := NewClient(GeonamesLocation(s.URL), RefreshTimeout(time.Second))
-		assert.Nil(t, err)
-		assert.NotNil(t, c)
-		assert.Equal(t, c.common.conf.refreshTimeout, time.Second)
-		assert.Equal(t, c.common.conf.geonamesLocation, s.URL)
+		r := NewRadar(GeonamesLocation(s.URL), RefreshTimeout(time.Second))
+		r.Wait()
+		assert.Nil(t, r.Error())
+		assert.NotNil(t, r)
+		assert.Equal(t, r.conf.refreshTimeout, time.Second)
+		assert.Equal(t, r.conf.geonamesLocation, s.URL)
 	})
 }
 
-func TestLocationService_Refresh(t *testing.T) {
+func TestRadar_Refresh(t *testing.T) {
+	t.Parallel()
+
 	t.Run("should notify on errors", func(t *testing.T) {
 		t.Run("bad body", func(t *testing.T) {
 			s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Write([]byte("bad body"))
 			}))
 
-			_, err := NewClient(GeonamesLocation(s.URL))
-			assert.NotNil(t, err)
+			r := NewRadar(GeonamesLocation(s.URL))
+			r.Wait()
+			assert.NotNil(t, r.Error())
 		})
 	})
 
-	s := serve("testdata/sample.zip")
-	mxm := serve("testdata/maxmind-test.tgz")
-	c, _ := NewClient(GeonamesLocation(s.URL), MaxmindLocation(mxm.URL))
-
 	t.Run("can refresh", func(t *testing.T) {
-		assert.Nil(t, c.Locations.Refresh(context.TODO()))
+		s := serve("testdata/sample.zip")
+		mxm := serve("testdata/GeoLite2-City.tgz")
+		r := NewRadar(GeonamesLocation(s.URL), MaxmindLocation(mxm.URL))
+		r.Wait()
+		r.Refresh(context.Background())
+		r.Wait()
 	})
 }
 
-func TestLocationService_Get(t *testing.T) {
+func TestRadar_Get(t *testing.T) {
+	t.Parallel()
+
 	s := serve("testdata/sample.zip")
-	mxm := serve("testdata/maxmind-test.tgz")
-	c, _ := NewClient(GeonamesLocation(s.URL), MaxmindLocation(mxm.URL), MaxmindKey("test-key"))
+	mxm := serve("testdata/GeoLite2-City.tgz")
+	r := NewRadar(GeonamesLocation(s.URL), MaxmindLocation(mxm.URL), MaxmindKey("test-key"))
+	r.Wait()
+
 	t.Run("should notify on errors", func(t *testing.T) {
 		t.Run("cache miss", func(t *testing.T) {
-			_, err := c.Locations.Postal("US", "999999")
+			_, err := r.Postal("US", "999999")
 			assert.NotNil(t, err)
 		})
 
 		t.Run("bad ip", func(t *testing.T) {
-			_, err := c.Locations.IP("bad")
+			_, err := r.IP("bad")
 			assert.NotNil(t, err)
 		})
 
 		t.Run("not found", func(t *testing.T) {
-			_, err := c.Locations.IP("192.168.1.1")
+			_, err := r.IP("192.168.1.1")
 			assert.NotNil(t, err)
 		})
 	})
 
 	t.Run("can retrieve location", func(t *testing.T) {
-		loc, err := c.Locations.Postal("US", "20017")
+		loc, err := r.Postal("US", "20017")
 		assert.Nil(t, err)
 		assert.NotNil(t, loc)
 		assert.Equal(t, "us", loc.Country)
@@ -98,56 +119,59 @@ func TestLocationService_Get(t *testing.T) {
 		assert.Equal(t, "district of columbia", loc.Subdivision2)
 
 		t.Run("by ip", func(t *testing.T) {
-			loc, err := c.Locations.IP("81.2.69.142")
+			loc, err := r.IP("81.2.69.142")
 			assert.Nil(t, err)
 			assert.NotNil(t, loc)
 
-			loc, err = c.Locations.IP("216.160.83.56")
+			loc, err = r.IP("216.160.83.56")
 			assert.Nil(t, err)
 			assert.NotNil(t, loc)
 		})
 	})
 }
 
-func TestLocationService_Envelope(t *testing.T) {
+func TestRadar_Envelope(t *testing.T) {
+	t.Parallel()
+
 	s := serve("testdata/sample.zip")
-	c, _ := NewClient(GeonamesLocation(s.URL))
+	r := NewRadar(GeonamesLocation(s.URL))
+	r.Wait()
 
 	t.Run("should notify on errors", func(t *testing.T) {
 		t.Run("bad location", func(t *testing.T) {
-			_, err := c.Locations.Postal("US", "999999")
+			_, err := r.Postal("US", "999999")
 			assert.NotNil(t, err)
 		})
 	})
 
 	t.Run("can retrieve envelope", func(t *testing.T) {
-		loc, err := c.Locations.City("US", "dc", "washington")
+		loc, err := r.City("US", "dc", "washington")
 		assert.Nil(t, err)
 		assert.NotNil(t, loc)
 		assert.Equal(t, 38.90095, loc.Center().Latitude)
 		assert.Equal(t, -77.0118, loc.Center().Longitude)
 		assert.Equal(t, 10.505164843148291, loc.Radius())
 
-		loc, err = c.Locations.City("US", "ny", "brooklyn")
+		loc, err = r.City("US", "ny", "brooklyn")
 		assert.Nil(t, err)
 		assert.NotNil(t, loc)
 		assert.Equal(t, 40.65195000000001, loc.Center().Latitude)
 		assert.Equal(t, -73.95195, loc.Center().Longitude)
 		assert.Equal(t, 10.665443054330021, loc.Radius())
 
-		loc, err = c.Locations.Country("US")
+		loc, err = r.Country("US")
 		assert.Nil(t, err)
 		assert.NotNil(t, loc)
 
-		loc, err = c.Locations.Secondary("US", "ny", "kings")
+		loc, err = r.SecondarySubdivision("US", "ny", "kings")
 		assert.Nil(t, err)
 		assert.NotNil(t, loc)
 
-		loc, err = c.Locations.Primary("US", "ny")
+		loc, err = r.PrimarySubdivision("US", "ny")
 		assert.Nil(t, err)
 		assert.NotNil(t, loc)
 
-		loc, err = c.Locations.Primary("US", "ny")
+		loc, err = r.PrimarySubdivision("US", "ny")
 		assert.Nil(t, err)
 		assert.NotNil(t, loc)
 	})
