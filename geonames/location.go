@@ -1,4 +1,4 @@
-package gndb
+package geonames
 
 import (
 	"fmt"

@@ -1,17 +1,19 @@
-package gndb
+package geonames
 
 import (
 	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/csv"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"strconv"
 	"strings"
 
 	"github.com/pghq/go-ark"
-	"github.com/pghq/go-ark/rdb"
+	"github.com/pghq/go-ark/db"
+	"github.com/pghq/go-ark/inmem"
 	"github.com/pghq/go-tea"
 
 	"github.com/pghq/go-way/client"
@@ -22,10 +24,10 @@ const (
 	numColumns = 12
 )
 
-// schema is the schema for memdb
-var schema = rdb.Schema{
+// schema for the database
+var schema = db.Schema{
 	"locations": map[string][]string{
-		"primary":      {"country", "postal_code"},
+		"postal":       {"country", "postal_code"},
 		"country":      {"country"},
 		"subdivision1": {"country", "subdivision1"},
 		"subdivision2": {"country", "subdivision1", "subdivision2"},
@@ -33,44 +35,38 @@ var schema = rdb.Schema{
 	},
 }
 
-// DB for GeoNames
-type DB struct {
-	Size int
-	conn *ark.RDBConn
+// Client for GeoNames
+type Client struct {
+	LocationCount int
+	mapper        *ark.Mapper
 }
 
-// Get for locations
-func (db *DB) Get(id LocationId) (*Location, error) {
-	if db == nil {
-		return nil, tea.NewNoContent("db not ready")
+// Get a location
+func (c *Client) Get(id LocationId) (*Location, error) {
+	if c == nil {
+		return nil, tea.NewNoContent("client not ready")
 	}
 
 	var fence *Location
-	return fence, db.conn.Do(context.Background(), func(tx *ark.RDBTxn) error {
-		f := rdb.Ft()
+	return fence, c.mapper.Do(context.Background(), func(tx db.Txn) error {
+		var query db.QueryOption
 		switch {
 		case id.IsCity():
-			f = f.IdxEq("city", id.country, id.primary, id.city)
+			query = db.Eq("city", []interface{}{id.country, id.primary, id.city})
 		case id.IsPostal():
-			f = f.IdxEq("primary", id.country, id.postalCode)
-			var location *Location
-			if _, err := tx.Get(ark.Qy().Table("locations").Filter(f), &location).Resolve(); err != nil {
-				return tea.Error(err)
-			}
-			fence = location
-			return nil
+			query = db.Eq("postal", []interface{}{id.country, id.postalCode})
 		case id.IsPrimary():
-			f = f.IdxEq("subdivision1", id.country, id.primary)
+			query = db.Eq("subdivision1", []interface{}{id.country, id.primary})
 		case id.IsSecondary():
-			f = f.IdxEq("subdivision2", id.country, id.primary, id.secondary)
+			query = db.Eq("subdivision2", []interface{}{id.country, id.primary, id.secondary})
 		case id.IsCountry():
-			f = f.IdxEq("country", id.country)
+			query = db.Eq("country", []interface{}{id.country})
 		default:
 			return tea.NewError("bad id")
 		}
 
 		var locations []Location
-		if _, err := tx.List(ark.Qy().Table("locations").Filter(f), &locations).Resolve(); err != nil {
+		if err := tx.List("locations", &locations, query, db.Limit(-1)); err != nil {
 			return tea.Error(err)
 		}
 
@@ -86,11 +82,11 @@ func (db *DB) Get(id LocationId) (*Location, error) {
 
 		fence = location
 		return nil
-	}, true)
+	}, db.ReadOnly())
 }
 
-// Open geonames db
-func Open(ctx context.Context, uri string) (*DB, error) {
+// NewClient Creates a new GeoNames client
+func NewClient(ctx context.Context, uri string) (*Client, error) {
 	resp, err := client.Get(ctx, uri)
 	if err != nil {
 		return nil, tea.Error(err)
@@ -108,9 +104,9 @@ func Open(ctx context.Context, uri string) (*DB, error) {
 		return nil, tea.NewErrorf("unexpected number of files in zip, %d found", len(zr.File))
 	}
 
-	db := DB{}
-	db.conn, _ = ark.Open().DSN(schema).ConnectRDB(ctx, "inmem")
-	err = db.conn.Do(ctx, func(tx *ark.RDBTxn) error {
+	c := Client{}
+	c.mapper = ark.New(ark.DB(inmem.NewDB(db.RDB(schema))))
+	err = c.mapper.Do(ctx, func(tx db.Txn) error {
 		var f io.ReadCloser
 		if f, err = zr.File[0].Open(); err == nil {
 			defer f.Close()
@@ -138,9 +134,12 @@ func Open(ctx context.Context, uri string) (*DB, error) {
 					return tea.Error(err)
 				}
 
+				country := strings.ToLower(record[0])
+				postalCode := strings.ToLower(record[1])
+				key := fmt.Sprintf("%s.%s", country, postalCode)
 				location := Location{
-					Country:      strings.ToLower(record[0]),
-					PostalCode:   strings.ToLower(record[1]),
+					Country:      country,
+					PostalCode:   postalCode,
 					City:         strings.ToLower(record[2]),
 					Subdivision1: strings.ToLower(record[4]),
 					Subdivision2: strings.ToLower(record[5]),
@@ -150,8 +149,8 @@ func Open(ctx context.Context, uri string) (*DB, error) {
 					},
 				}
 
-				if _, err = tx.Insert("locations", location).Resolve(); err == nil {
-					db.Size += 1
+				if err = tx.Insert("locations", key, location); err == nil {
+					c.LocationCount += 1
 				}
 			}
 		}
@@ -161,7 +160,7 @@ func Open(ctx context.Context, uri string) (*DB, error) {
 		}
 
 		return nil
-	})
+	}, db.BatchWrite())
 
-	return &db, err
+	return &c, err
 }

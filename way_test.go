@@ -11,20 +11,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNewRadar(t *testing.T) {
+func TestNew(t *testing.T) {
 	t.Parallel()
 
 	s := serve("testdata/sample.zip")
 
 	t.Run("should notify on errors", func(t *testing.T) {
 		t.Run("bad geonames refresh", func(t *testing.T) {
-			r := NewRadar(GeonamesLocation("testdata/sample.zip"))
+			r := New(GeonamesLocation("testdata/sample.zip"))
 			r.Wait()
 			assert.NotNil(t, r.Error())
 		})
 
 		t.Run("bad maxmind refresh", func(t *testing.T) {
-			r := NewRadar(GeonamesLocation(s.URL), MaxmindLocation("testdata/GeoLite2-City.tgz"))
+			r := New(GeonamesLocation(s.URL), MaxmindLocation("testdata/GeoLite2-City.tgz"))
 			r.Wait()
 			assert.NotNil(t, r.Error())
 		})
@@ -34,25 +34,25 @@ func TestNewRadar(t *testing.T) {
 				w.WriteHeader(http.StatusNoContent)
 			}))
 
-			r := NewRadar(GeonamesLocation(s.URL))
+			r := New(GeonamesLocation(s.URL))
 			r.Wait()
 			assert.NotNil(t, r.Error())
 		})
 	})
 
 	t.Run("can send background errors", func(t *testing.T) {
-		r := NewRadar(GeonamesLocation(s.URL))
+		r := New(GeonamesLocation(s.URL))
 		r.sendError(tea.NewError("an error has occurred"))
 		r.sendError(tea.NewError("an error has occurred"))
 	})
 
 	t.Run("can create new instance", func(t *testing.T) {
-		r := NewRadar(GeonamesLocation(s.URL), RefreshTimeout(time.Second))
+		r := New(GeonamesLocation(s.URL), RefreshTimeout(time.Second))
 		r.Wait()
 		assert.Nil(t, r.Error())
 		assert.NotNil(t, r)
-		assert.Equal(t, r.conf.refreshTimeout, time.Second)
-		assert.Equal(t, r.conf.geonamesLocation, s.URL)
+		assert.Equal(t, r.refreshTimeout, time.Second)
+		assert.Equal(t, r.geonamesLocation, s.URL)
 	})
 }
 
@@ -65,7 +65,7 @@ func TestRadar_Refresh(t *testing.T) {
 				w.Write([]byte("bad body"))
 			}))
 
-			r := NewRadar(GeonamesLocation(s.URL))
+			r := New(GeonamesLocation(s.URL))
 			r.Wait()
 			assert.NotNil(t, r.Error())
 		})
@@ -74,7 +74,7 @@ func TestRadar_Refresh(t *testing.T) {
 	t.Run("can refresh", func(t *testing.T) {
 		s := serve("testdata/sample.zip")
 		mxm := serve("testdata/GeoLite2-City.tgz")
-		r := NewRadar(GeonamesLocation(s.URL), MaxmindLocation(mxm.URL))
+		r := New(GeonamesLocation(s.URL), MaxmindLocation(mxm.URL))
 		r.Wait()
 		r.Refresh(context.Background())
 		r.Wait()
@@ -86,7 +86,7 @@ func TestRadar_Get(t *testing.T) {
 
 	s := serve("testdata/sample.zip")
 	mxm := serve("testdata/GeoLite2-City.tgz")
-	r := NewRadar(GeonamesLocation(s.URL), MaxmindLocation(mxm.URL), MaxmindKey("test-key"))
+	r := New(GeonamesLocation(s.URL), MaxmindLocation(mxm.URL), MaxmindKey("test-key"))
 	r.Wait()
 
 	t.Run("should notify on errors", func(t *testing.T) {
@@ -134,7 +134,7 @@ func TestRadar_Envelope(t *testing.T) {
 	t.Parallel()
 
 	s := serve("testdata/sample.zip")
-	r := NewRadar(GeonamesLocation(s.URL))
+	r := New(GeonamesLocation(s.URL))
 	r.Wait()
 
 	t.Run("should notify on errors", func(t *testing.T) {
@@ -163,15 +163,15 @@ func TestRadar_Envelope(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, loc)
 
-		loc, err = r.SecondarySubdivision("US", "ny", "kings")
+		loc, err = r.SSD("US", "ny", "kings")
 		assert.Nil(t, err)
 		assert.NotNil(t, loc)
 
-		loc, err = r.PrimarySubdivision("US", "ny")
+		loc, err = r.PSD("US", "ny")
 		assert.Nil(t, err)
 		assert.NotNil(t, loc)
 
-		loc, err = r.PrimarySubdivision("US", "ny")
+		loc, err = r.PSD("US", "ny")
 		assert.Nil(t, err)
 		assert.NotNil(t, loc)
 	})

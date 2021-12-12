@@ -17,7 +17,7 @@ import "github.com/pghq/go-way"
 To create a new client:
 
 ```
-radar := way.NewRadar()
+radar := way.New()
 
 // optionally wait for background refresh to occur
 radar.Wait()

@@ -1,4 +1,4 @@
-package gndb
+package geonames
 
 import (
 	"context"
@@ -13,13 +13,13 @@ func TestDB_Get(t *testing.T) {
 	t.Parallel()
 
 	t.Run("not ready", func(t *testing.T) {
-		var db *DB
-		_, err := db.Get(LocationId{})
+		var c *Client
+		_, err := c.Get(LocationId{})
 		assert.NotNil(t, err)
 	})
 
 	t.Run("bad location", func(t *testing.T) {
-		_, err := Open(context.TODO(), "../testdata/sample.zip")
+		_, err := NewClient(context.TODO(), "../testdata/sample.zip")
 		assert.NotNil(t, err)
 	})
 
@@ -28,52 +28,52 @@ func TestDB_Get(t *testing.T) {
 			w.Write([]byte("bad body"))
 		}))
 
-		_, err := Open(context.TODO(), s.URL)
+		_, err := NewClient(context.TODO(), s.URL)
 		assert.NotNil(t, err)
 	})
 
 	t.Run("too many files", func(t *testing.T) {
 		s := serve("../testdata/too-many-files.zip")
-		_, err := Open(context.TODO(), s.URL)
+		_, err := NewClient(context.TODO(), s.URL)
 		assert.NotNil(t, err)
 	})
 
 	t.Run("bad columns", func(t *testing.T) {
 		s := serve("../testdata/bad-columns.zip")
-		_, err := Open(context.TODO(), s.URL)
+		_, err := NewClient(context.TODO(), s.URL)
 		assert.NotNil(t, err)
 	})
 
 	t.Run("bad latitude", func(t *testing.T) {
 		s := serve("../testdata/bad-latitude.zip")
-		_, err := Open(context.TODO(), s.URL)
+		_, err := NewClient(context.TODO(), s.URL)
 		assert.NotNil(t, err)
 	})
 
 	t.Run("bad longitude", func(t *testing.T) {
 		s := serve("../testdata/bad-longitude.zip")
-		_, err := Open(context.TODO(), s.URL)
+		_, err := NewClient(context.TODO(), s.URL)
 		assert.NotNil(t, err)
 	})
 
 	t.Run("missing index", func(t *testing.T) {
 		s := serve("../testdata/missing-index.zip")
-		_, err := Open(context.TODO(), s.URL)
+		_, err := NewClient(context.TODO(), s.URL)
 		assert.Nil(t, err)
 	})
 
 	t.Run("bad quote", func(t *testing.T) {
 		s := serve("../testdata/bad-quote.zip")
-		_, err := Open(context.TODO(), s.URL)
+		_, err := NewClient(context.TODO(), s.URL)
 		assert.NotNil(t, err)
 	})
 
 	s := serve("../testdata/sample.zip")
-	db, _ := Open(context.TODO(), s.URL)
+	c, _ := NewClient(context.TODO(), s.URL)
 
 	t.Run("should notify on errors", func(t *testing.T) {
 		t.Run("bad location", func(t *testing.T) {
-			_, err := db.Get(LocationId{})
+			_, err := c.Get(LocationId{})
 			assert.NotNil(t, err)
 
 			loc := Location{}
@@ -83,18 +83,18 @@ func TestDB_Get(t *testing.T) {
 		})
 
 		t.Run("not found postal", func(t *testing.T) {
-			_, err := db.Get(PostalCode("US", "999999"))
+			_, err := c.Get(PostalCode("US", "999999"))
 			assert.NotNil(t, err)
 		})
 
 		t.Run("not found country", func(t *testing.T) {
-			_, err := db.Get(Country("USA"))
+			_, err := c.Get(Country("USA"))
 			assert.NotNil(t, err)
 		})
 	})
 
 	t.Run("can retrieve envelope", func(t *testing.T) {
-		loc, err := db.Get(City("US", "dc", "washington"))
+		loc, err := c.Get(City("US", "dc", "washington"))
 		assert.Nil(t, err)
 		assert.NotNil(t, loc)
 
@@ -102,26 +102,26 @@ func TestDB_Get(t *testing.T) {
 		assert.Equal(t, -77.0118, loc.Center().Longitude)
 		assert.Equal(t, 10.505164843148291, loc.Radius())
 
-		loc, err = db.Get(City("US", "ny", "brooklyn"))
+		loc, err = c.Get(City("US", "ny", "brooklyn"))
 		assert.Nil(t, err)
 		assert.NotNil(t, loc)
 		assert.Equal(t, 40.65195000000001, loc.Center().Latitude)
 		assert.Equal(t, -73.95195, loc.Center().Longitude)
 		assert.Equal(t, 10.665443054330021, loc.Radius())
 
-		loc, err = db.Get(Country("US"))
+		loc, err = c.Get(Country("US"))
 		assert.Nil(t, err)
 		assert.NotNil(t, loc)
 
-		loc, err = db.Get(Secondary("US", "ny", "kings"))
+		loc, err = c.Get(Secondary("US", "ny", "kings"))
 		assert.Nil(t, err)
 		assert.NotNil(t, loc)
 
-		loc, err = db.Get(Primary("US", "ny"))
+		loc, err = c.Get(Primary("US", "ny"))
 		assert.Nil(t, err)
 		assert.NotNil(t, loc)
 
-		loc, err = db.Get(PostalCode("US", "11201"))
+		loc, err = c.Get(PostalCode("US", "11201"))
 		assert.Nil(t, err)
 		assert.NotNil(t, loc)
 	})
