@@ -1,4 +1,4 @@
-package mmdb
+package maxmind
 
 import (
 	"archive/tar"
@@ -13,38 +13,39 @@ import (
 
 	"github.com/oschwald/geoip2-golang"
 	"github.com/pghq/go-ark"
+	"github.com/pghq/go-ark/db"
 	"github.com/pghq/go-tea"
 
 	"github.com/pghq/go-way/client"
 )
 
 const (
-	// positiveTTL is the positive ttl for search queries
-	positiveTTL = 30 * time.Minute
+	// PositiveTTL is the positive ttl for search queries
+	PositiveTTL = 30 * time.Minute
 )
 
-// DB instance for MaxMind
-type DB struct {
-	Size int
-	mdb  *geoip2.Reader
-	conn *ark.KVSConn
+// Client for Maxmind
+type Client struct {
+	IPCount int
+	reader  *geoip2.Reader
+	mapper  *ark.Mapper
 }
 
-// Get city
-func (db *DB) Get(ip net.IP) (*geoip2.City, error) {
-	if db == nil {
-		return nil, tea.NewNoContent("db not ready")
+// Get city by id
+func (c *Client) Get(ip net.IP) (*geoip2.City, error) {
+	if c == nil {
+		return nil, tea.NewNoContent("client not ready")
 	}
 
 	var city *geoip2.City
-	return city, db.conn.Do(context.Background(), func(tx *ark.KVSTxn) error {
+	return city, c.mapper.Do(context.Background(), func(tx db.Txn) error {
 		var cy geoip2.City
-		if _, err := tx.Get([]byte(ip.String()), &cy).Resolve(); err == nil {
+		if err := tx.Get("", ip.String(), &cy); err == nil {
 			city = &cy
 			return nil
 		}
 
-		c, err := db.mdb.City(ip)
+		c, err := c.reader.City(ip)
 		if err != nil {
 			return tea.Error(err)
 		}
@@ -54,18 +55,17 @@ func (db *DB) Get(ip net.IP) (*geoip2.City, error) {
 		}
 
 		city = c
-		tx.InsertWithTTL([]byte(ip.String()), city, positiveTTL)
-		return nil
+		return tx.Insert("", ip.String(), city, db.TTL(PositiveTTL))
 	})
 }
 
-// Close the db
-func (db *DB) Close() error {
-	return db.mdb.Close()
+// Close the reader
+func (c *Client) Close() error {
+	return c.reader.Close()
 }
 
-// Open the maxmind db
-func Open(ctx context.Context, uri string) (*DB, error) {
+// NewClient creates a new maxmind client
+func NewClient(ctx context.Context, uri string) (*Client, error) {
 	resp, err := client.Get(ctx, uri)
 	if err != nil {
 		return nil, tea.Error(err)
@@ -92,18 +92,16 @@ func Open(ctx context.Context, uri string) (*DB, error) {
 	}
 
 	b, _ = ioutil.ReadAll(tr)
-	mdb, err := geoip2.FromBytes(b)
+	reader, err := geoip2.FromBytes(b)
 	if err != nil {
 		return nil, tea.Error(err)
 	}
 
-	db := DB{
-		mdb: mdb,
+	c := Client{
+		IPCount: int(reader.Metadata().NodeCount),
+		reader:  reader,
+		mapper:  ark.New(),
 	}
 
-	db.Size = int(db.mdb.Metadata().NodeCount)
-	dm := ark.Open()
-	db.conn, _ = dm.ConnectKVS(ctx, "inmem")
-
-	return &db, nil
+	return &c, nil
 }
