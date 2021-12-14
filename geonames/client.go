@@ -43,7 +43,7 @@ type Client struct {
 // Get a location
 func (c *Client) Get(id LocationId) (*Location, error) {
 	if c == nil {
-		return nil, tea.NewNoContent("client not ready")
+		return nil, tea.NewNotFound("client not ready")
 	}
 
 	var fence *Location
