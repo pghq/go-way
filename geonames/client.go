@@ -13,7 +13,6 @@ import (
 
 	"github.com/pghq/go-ark"
 	"github.com/pghq/go-ark/db"
-	"github.com/pghq/go-ark/inmem"
 	"github.com/pghq/go-tea"
 
 	"github.com/pghq/go-way/client"
@@ -52,15 +51,15 @@ func (c *Client) Get(id LocationId) (*Location, error) {
 		var query db.QueryOption
 		switch {
 		case id.IsCity():
-			query = db.Eq("city", []interface{}{id.country, id.primary, id.city})
+			query = db.Eq("city", id.country, id.primary, id.city)
 		case id.IsPostal():
-			query = db.Eq("postal", []interface{}{id.country, id.postalCode})
+			query = db.Eq("postal", id.country, id.postalCode)
 		case id.IsPrimary():
-			query = db.Eq("subdivision1", []interface{}{id.country, id.primary})
+			query = db.Eq("subdivision1", id.country, id.primary)
 		case id.IsSecondary():
-			query = db.Eq("subdivision2", []interface{}{id.country, id.primary, id.secondary})
+			query = db.Eq("subdivision2", id.country, id.primary, id.secondary)
 		case id.IsCountry():
-			query = db.Eq("country", []interface{}{id.country})
+			query = db.Eq("country", id.country)
 		default:
 			return tea.NewError("bad id")
 		}
@@ -105,7 +104,7 @@ func NewClient(ctx context.Context, uri string) (*Client, error) {
 	}
 
 	c := Client{}
-	c.mapper = ark.New(ark.DB(inmem.NewDB(db.RDB(schema))))
+	c.mapper = ark.NewRDB(schema)
 	err = c.mapper.Do(ctx, func(tx db.Txn) error {
 		var f io.ReadCloser
 		if f, err = zr.File[0].Open(); err == nil {
