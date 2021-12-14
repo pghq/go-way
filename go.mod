@@ -5,13 +5,14 @@ go 1.17
 require (
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551
 	github.com/oschwald/geoip2-golang v1.5.0
-	github.com/pghq/go-ark v0.0.37
+	github.com/pghq/go-ark v0.0.40
 	github.com/pghq/go-red v0.0.10
 	github.com/pghq/go-tea v0.0.30
 	github.com/stretchr/testify v1.7.0
 )
 
 require (
+	github.com/Masterminds/squirrel v1.5.2 // indirect
 	github.com/adjust/rmq/v4 v4.0.1 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
@@ -34,10 +35,15 @@ require (
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.0 // indirect
 	github.com/hashicorp/go-version v1.3.0 // indirect
+	github.com/jmoiron/sqlx v1.3.4 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
+	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
+	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
+	github.com/luna-duclos/instrumentedsql v1.1.3 // indirect
 	github.com/oschwald/maxminddb-golang v1.8.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/pressly/goose/v3 v3.4.1 // indirect
 	github.com/rs/cors v1.8.0 // indirect
 	github.com/rs/zerolog v1.25.0 // indirect
 	github.com/teambition/rrule-go v1.7.2 // indirect
