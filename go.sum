@@ -325,13 +325,13 @@ github.com/oschwald/geoip2-golang v1.5.0/go.mod h1:xdvYt5xQzB8ORWFqPnqMwZpCpgNag
 github.com/oschwald/maxminddb-golang v1.8.0 h1:Uh/DSnGoxsyp/KYbY1AuP0tYEwfs0sCph9p/UMXK/Hk=
 github.com/oschwald/maxminddb-golang v1.8.0/go.mod h1:RXZtst0N6+FY/3qCNmZMBApR19cdQj43/NM9VkrNAis=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
-github.com/pghq/go-ark v0.0.40 h1:8YEtDqlyhqRrmeb2+s8OGrElO2/DTJb4yQ4+c+H3who=
-github.com/pghq/go-ark v0.0.40/go.mod h1:EV3vP8eP52ghTiGuzTPvbPaFSt7IxHZehRdp2wEXNJI=
+github.com/pghq/go-ark v0.0.41 h1:KXFM3jt8QhCO0N2Smmf8z0vMFLn21cs+FjxVpRKpURw=
+github.com/pghq/go-ark v0.0.41/go.mod h1:Q53J6Y8uqxYDwcNCdydtTe0K2VKDQe2ws+B6Y93USgw=
 github.com/pghq/go-red v0.0.10 h1:zk0NsnL7AocgG4YLHJ5hANlhLPG0ImKIW34LNDC9HRY=
 github.com/pghq/go-red v0.0.10/go.mod h1:07psiUBGLGk+ifumXVTFPMGNpsYBObRrkq85f/hyrHA=
 github.com/pghq/go-tea v0.0.29/go.mod h1:Md3yoEAgn1ULDv7cVRLTOcn1YWnlYRuKCQnvvLEFscE=
-github.com/pghq/go-tea v0.0.30 h1:Oh0t/y+e65HWYemS47l895I+ZS7T+o1HPN2a2pKLLuQ=
-github.com/pghq/go-tea v0.0.30/go.mod h1:5efVLSVXUUwm4SqhNr7J6phtqHD/5fwwWne27btyruY=
+github.com/pghq/go-tea v0.0.33 h1:ZqyN/2v/F5+zIvbhgsLfN/Asg0XltisCtWqPyVFBxvU=
+github.com/pghq/go-tea v0.0.33/go.mod h1:5efVLSVXUUwm4SqhNr7J6phtqHD/5fwwWne27btyruY=
 github.com/pierrec/lz4 v2.0.5+incompatible/go.mod h1:pdkljMzZIN41W+lC3N2tnIh5sFi+IEE17M5jbnwPHcY=
 github.com/pingcap/errors v0.11.4 h1:lFuQV/oaUMGcD2tqt+01ROSmJs75VG1ToEOkZIZ4nE4=
 github.com/pingcap/errors v0.11.4/go.mod h1:Oi8TUi2kEtXXLMJk9l1cGmz20kV3TaQ0usTwv5KuLY8=

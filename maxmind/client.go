@@ -34,7 +34,7 @@ type Client struct {
 // Get city by id
 func (c *Client) Get(ip net.IP) (*geoip2.City, error) {
 	if c == nil {
-		return nil, tea.NewNoContent("client not ready")
+		return nil, tea.NewNotFound("client not ready")
 	}
 
 	var city *geoip2.City
@@ -51,7 +51,7 @@ func (c *Client) Get(ip net.IP) (*geoip2.City, error) {
 		}
 
 		if c == nil || c.City.GeoNameID == 0 {
-			return tea.NewNoContent("not found")
+			return tea.NewNotFound("not found")
 		}
 
 		city = c
