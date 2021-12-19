@@ -38,7 +38,7 @@ func (c *Client) Get(ip net.IP) (*geoip2.City, error) {
 	}
 
 	var city *geoip2.City
-	return city, c.mapper.Do(context.Background(), func(tx db.Txn) error {
+	return city, c.mapper.Do(context.Background(), func(tx ark.Txn) error {
 		var cy geoip2.City
 		if err := tx.Get("", ip.String(), &cy); err == nil {
 			city = &cy
