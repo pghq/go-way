@@ -47,7 +47,7 @@ func (c *Client) Get(id LocationId) (*Location, error) {
 	}
 
 	var fence *Location
-	return fence, c.mapper.Do(context.Background(), func(tx db.Txn) error {
+	return fence, c.mapper.Do(context.Background(), func(tx ark.Txn) error {
 		var query db.QueryOption
 		switch {
 		case id.IsCity():
@@ -105,7 +105,7 @@ func NewClient(ctx context.Context, uri string) (*Client, error) {
 
 	c := Client{}
 	c.mapper = ark.NewRDB(schema)
-	err = c.mapper.Do(ctx, func(tx db.Txn) error {
+	err = c.mapper.Do(ctx, func(tx ark.Txn) error {
 		var f io.ReadCloser
 		if f, err = zr.File[0].Open(); err == nil {
 			defer f.Close()

@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551
 	github.com/oschwald/geoip2-golang v1.5.0
-	github.com/pghq/go-ark v0.0.49
+	github.com/pghq/go-ark v0.0.51
 	github.com/pghq/go-red v0.0.10
 	github.com/pghq/go-tea v0.0.37
 	github.com/stretchr/testify v1.7.0
