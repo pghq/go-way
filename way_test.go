@@ -4,12 +4,18 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/pghq/go-tea"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestMain(m *testing.M) {
+	tea.Testing()
+	os.Exit(m.Run())
+}
 
 func TestNew(t *testing.T) {
 	t.Parallel()
@@ -42,8 +48,8 @@ func TestNew(t *testing.T) {
 
 	t.Run("can send background errors", func(t *testing.T) {
 		r := New(GeonamesLocation(s.URL))
-		r.sendError(tea.NewError("an error has occurred"))
-		r.sendError(tea.NewError("an error has occurred"))
+		r.sendError(tea.Err("an error has occurred"))
+		r.sendError(tea.Err("an error has occurred"))
 	})
 
 	t.Run("can create new instance", func(t *testing.T) {

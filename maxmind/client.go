@@ -13,7 +13,6 @@ import (
 
 	"github.com/oschwald/geoip2-golang"
 	"github.com/pghq/go-ark"
-	"github.com/pghq/go-ark/db"
 	"github.com/pghq/go-tea"
 
 	"github.com/pghq/go-way/client"
@@ -28,17 +27,17 @@ const (
 type Client struct {
 	IPCount int
 	reader  *geoip2.Reader
-	mapper  *ark.Mapper
+	db      *ark.Mapper
 }
 
 // Get city by id
 func (c *Client) Get(ip net.IP) (*geoip2.City, error) {
 	if c == nil {
-		return nil, tea.NewNotFound("client not ready")
+		return nil, tea.ErrNotFound("client not ready")
 	}
 
 	var city *geoip2.City
-	return city, c.mapper.Do(context.Background(), func(tx ark.Txn) error {
+	return city, c.db.Do(context.Background(), func(tx ark.Txn) error {
 		var cy geoip2.City
 		if err := tx.Get("", ip.String(), &cy); err == nil {
 			city = &cy
@@ -47,15 +46,15 @@ func (c *Client) Get(ip net.IP) (*geoip2.City, error) {
 
 		c, err := c.reader.City(ip)
 		if err != nil {
-			return tea.Error(err)
+			return tea.Stack(err)
 		}
 
 		if c == nil || c.City.GeoNameID == 0 {
-			return tea.NewNotFound("not found")
+			return tea.ErrNotFound("not found")
 		}
 
 		city = c
-		return tx.Insert("", ip.String(), city, db.TTL(PositiveTTL))
+		return tx.InsertTTL("", ip.String(), city, PositiveTTL)
 	})
 }
 
@@ -68,21 +67,21 @@ func (c *Client) Close() error {
 func NewClient(ctx context.Context, uri string) (*Client, error) {
 	resp, err := client.Get(ctx, uri)
 	if err != nil {
-		return nil, tea.Error(err)
+		return nil, tea.Stack(err)
 	}
 	defer resp.Body.Close()
 
 	b, err := ioutil.ReadAll(resp.Body)
 	stream, err := gzip.NewReader(bytes.NewReader(b))
 	if err != nil {
-		return nil, tea.Error(err)
+		return nil, tea.Stack(err)
 	}
 
 	tr := tar.NewReader(stream)
 	for {
 		header, err := tr.Next()
 		if err != nil {
-			return nil, tea.Error(err)
+			return nil, tea.Stack(err)
 		}
 
 		base := filepath.Base(header.Name)
@@ -94,13 +93,13 @@ func NewClient(ctx context.Context, uri string) (*Client, error) {
 	b, _ = ioutil.ReadAll(tr)
 	reader, err := geoip2.FromBytes(b)
 	if err != nil {
-		return nil, tea.Error(err)
+		return nil, tea.Stack(err)
 	}
 
 	c := Client{
 		IPCount: int(reader.Metadata().NodeCount),
 		reader:  reader,
-		mapper:  ark.New(),
+		db:      ark.New("memory://"),
 	}
 
 	return &c, nil

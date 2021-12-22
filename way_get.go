@@ -12,12 +12,12 @@ import (
 func (r *Radar) IP(addr string) (*geonames.Location, error) {
 	ip := net.ParseIP(addr)
 	if ip == nil {
-		return nil, tea.NewError("invalid ip")
+		return nil, tea.Err("invalid ip")
 	}
 
 	city, err := r.maxmind.Get(ip)
 	if err != nil {
-		return nil, tea.Error(err)
+		return nil, tea.Stack(err)
 	}
 
 	loc := geonames.Location{

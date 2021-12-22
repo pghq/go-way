@@ -173,5 +173,5 @@ func ParseId(s string) (LocationId, error) {
 		}
 	}
 
-	return LocationId{}, tea.NewErrorf("bad location %s", s)
+	return LocationId{}, tea.Errf("bad location %s", s)
 }

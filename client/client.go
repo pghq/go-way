@@ -9,8 +9,11 @@ import (
 )
 
 const (
+	// Version is the version of the client
+	Version = "0.0.11"
+
 	// UserAgent is the default user agent for outgoing requests
-	UserAgent = "go-way/v0"
+	UserAgent = "go-way/v" + Version
 )
 
 // Get http request
@@ -22,17 +25,17 @@ func Get(ctx context.Context, url string) (*http.Response, error) {
 func do(ctx context.Context, method, url string, body io.Reader) (*http.Response, error) {
 	r, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
-		return nil, tea.Error(err)
+		return nil, tea.Stack(err)
 	}
 
 	r.Header.Set("User-Agent", UserAgent)
 	resp, err := http.DefaultClient.Do(r)
 	if err != nil {
-		return nil, tea.Error(err)
+		return nil, tea.Stack(err)
 	}
 
 	if resp.StatusCode != 200 {
-		return nil, tea.NewErrorf("unexpected refresh response code %d", resp.StatusCode)
+		return nil, tea.Errf("unexpected refresh response code %d", resp.StatusCode)
 	}
 
 	return resp, nil

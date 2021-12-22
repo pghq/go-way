@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pghq/go-ark/db"
+	"github.com/pghq/go-ark/database"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -104,7 +104,7 @@ func TestDB_Get(t *testing.T) {
 	})
 
 	t.Run("found cached", func(t *testing.T) {
-		<-time.After(db.DefaultViewTTL)
+		<-time.After(database.DefaultViewTTL)
 		city, err := c.Get(net.ParseIP("81.2.69.142"))
 		assert.Nil(t, err)
 		assert.NotNil(t, city)

@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/pghq/go-ark"
-	"github.com/pghq/go-ark/db"
+	"github.com/pghq/go-ark/database"
 	"github.com/pghq/go-tea"
 
 	"github.com/pghq/go-way/client"
@@ -24,7 +24,7 @@ const (
 )
 
 // schema for the database
-var schema = db.Schema{
+var schema = database.Schema{
 	"locations": map[string][]string{
 		"postal":       {"country", "postal_code"},
 		"country":      {"country"},
@@ -37,36 +37,36 @@ var schema = db.Schema{
 // Client for GeoNames
 type Client struct {
 	LocationCount int
-	mapper        *ark.Mapper
+	db            *ark.Mapper
 }
 
 // Get a location
 func (c *Client) Get(id LocationId) (*Location, error) {
 	if c == nil {
-		return nil, tea.NewNotFound("client not ready")
+		return nil, tea.ErrNotFound("client not ready")
 	}
 
 	var fence *Location
-	return fence, c.mapper.Do(context.Background(), func(tx ark.Txn) error {
-		var query db.QueryOption
+	return fence, c.db.View(context.Background(), func(tx ark.Txn) error {
+		var query database.QueryOption
 		switch {
 		case id.IsCity():
-			query = db.Eq("city", id.country, id.primary, id.city)
+			query = database.Eq("city", id.country, id.primary, id.city)
 		case id.IsPostal():
-			query = db.Eq("postal", id.country, id.postalCode)
+			query = database.Eq("postal", id.country, id.postalCode)
 		case id.IsPrimary():
-			query = db.Eq("subdivision1", id.country, id.primary)
+			query = database.Eq("subdivision1", id.country, id.primary)
 		case id.IsSecondary():
-			query = db.Eq("subdivision2", id.country, id.primary, id.secondary)
+			query = database.Eq("subdivision2", id.country, id.primary, id.secondary)
 		case id.IsCountry():
-			query = db.Eq("country", id.country)
+			query = database.Eq("country", id.country)
 		default:
-			return tea.NewError("bad id")
+			return tea.Err("bad id")
 		}
 
 		var locations []Location
-		if err := tx.List("locations", &locations, query, db.Limit(-1)); err != nil {
-			return tea.Error(err)
+		if err := tx.List("locations", &locations, query, database.Limit(-1)); err != nil {
+			return tea.Stack(err)
 		}
 
 		var location *Location
@@ -81,14 +81,14 @@ func (c *Client) Get(id LocationId) (*Location, error) {
 
 		fence = location
 		return nil
-	}, db.ReadOnly())
+	})
 }
 
 // NewClient Creates a new GeoNames client
 func NewClient(ctx context.Context, uri string) (*Client, error) {
 	resp, err := client.Get(ctx, uri)
 	if err != nil {
-		return nil, tea.Error(err)
+		return nil, tea.Stack(err)
 	}
 	defer resp.Body.Close()
 
@@ -96,16 +96,16 @@ func NewClient(ctx context.Context, uri string) (*Client, error) {
 	reader := bytes.NewReader(b)
 	zr, err := zip.NewReader(reader, int64(len(b)))
 	if err != nil {
-		return nil, tea.Error(err)
+		return nil, tea.Stack(err)
 	}
 
 	if len(zr.File) != 1 {
-		return nil, tea.NewErrorf("unexpected number of files in zip, %d found", len(zr.File))
+		return nil, tea.Errf("unexpected number of files in zip, %d found", len(zr.File))
 	}
 
 	c := Client{}
-	c.mapper = ark.NewRDB(schema)
-	err = c.mapper.Do(ctx, func(tx ark.Txn) error {
+	c.db = ark.New("memory://", database.Storage(schema))
+	err = c.db.Do(ctx, func(tx ark.Txn) error {
 		var f io.ReadCloser
 		if f, err = zr.File[0].Open(); err == nil {
 			defer f.Close()
@@ -120,17 +120,17 @@ func NewClient(ctx context.Context, uri string) (*Client, error) {
 				}
 
 				if len(record) != numColumns {
-					return tea.NewErrorf("unexpected number of columns in csv, %d found", len(record))
+					return tea.Errf("unexpected number of columns in csv, %d found", len(record))
 				}
 
 				latitude, err := strconv.ParseFloat(record[9], 64)
 				if err != nil {
-					return tea.Error(err)
+					return tea.Stack(err)
 				}
 
 				longitude, err := strconv.ParseFloat(record[10], 64)
 				if err != nil {
-					return tea.Error(err)
+					return tea.Stack(err)
 				}
 
 				country := strings.ToLower(record[0])
@@ -155,11 +155,11 @@ func NewClient(ctx context.Context, uri string) (*Client, error) {
 		}
 
 		if err != nil && err != io.EOF {
-			return tea.Error(err)
+			return tea.Stack(err)
 		}
 
 		return nil
-	}, db.BatchWrite())
+	}, database.BatchWrite())
 
 	return &c, err
 }
