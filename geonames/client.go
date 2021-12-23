@@ -16,6 +16,7 @@ import (
 	"github.com/pghq/go-tea"
 
 	"github.com/pghq/go-way/client"
+	"github.com/pghq/go-way/country"
 )
 
 const (
@@ -133,11 +134,11 @@ func NewClient(ctx context.Context, uri string) (*Client, error) {
 					return tea.Stack(err)
 				}
 
-				country := strings.ToLower(record[0])
+				cty := country.Country(strings.ToUpper(record[0]))
 				postalCode := strings.ToLower(record[1])
-				key := fmt.Sprintf("%s.%s", country, postalCode)
+				key := fmt.Sprintf("%s.%s", cty, postalCode)
 				location := Location{
-					Country:      country,
+					Country:      cty,
 					PostalCode:   postalCode,
 					City:         strings.ToLower(record[2]),
 					Subdivision1: strings.ToLower(record[4]),

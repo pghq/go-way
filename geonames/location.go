@@ -1,12 +1,12 @@
 package geonames
 
 import (
-	"fmt"
 	"math"
 	"strings"
 
 	"github.com/golang/geo/s2"
-	"github.com/pghq/go-tea"
+
+	"github.com/pghq/go-way/country"
 )
 
 // The Earth's mean radius in kilometers (according to NASA).
@@ -16,11 +16,11 @@ const earthRadiusKm = 6371.01
 type Location struct {
 	bounder *s2.RectBounder `db:"-"`
 	Coordinate
-	Country      string `db:"country"`
-	PostalCode   string `db:"postal_code"`
-	City         string `db:"city"`
-	Subdivision1 string `db:"subdivision1"`
-	Subdivision2 string `db:"subdivision2"`
+	Country      country.Country `db:"country"`
+	PostalCode   string          `db:"postal_code"`
+	City         string          `db:"city"`
+	Subdivision1 string          `db:"subdivision1"`
+	Subdivision2 string          `db:"subdivision2"`
 }
 
 // Add to the envelope
@@ -64,7 +64,7 @@ type Coordinate struct {
 
 // LocationId is the id for the location
 type LocationId struct {
-	country    string
+	country    country.Country
 	city       string
 	postalCode string
 	primary    string
@@ -96,82 +96,43 @@ func (id LocationId) IsPostal() bool {
 	return id.postalCode != "" && id == PostalCode(id.country, id.postalCode)
 }
 
-func (id LocationId) String() string {
-	switch {
-	case id.IsCity():
-		return fmt.Sprintf("city:%s,%s,%s", id.country, id.primary, id.city)
-	case id.IsSecondary():
-		return fmt.Sprintf("subdivision:%s,%s,%s", id.country, id.primary, id.secondary)
-	case id.IsPostal():
-		return fmt.Sprintf("postal:%s,%s", id.country, id.postalCode)
-	case id.IsPrimary():
-		return fmt.Sprintf("subdivision:%s,%s", id.country, id.primary)
-	case id.IsCountry():
-		return fmt.Sprintf("city:%s", id.country)
-	}
-
-	return ""
-}
-
 // Country creates a country location id
-func Country(country string) LocationId {
+func Country(country country.Country) LocationId {
 	return LocationId{
-		country: strings.ToLower(country),
+		country: country,
 	}
 }
 
 // Primary creates a first order subdivision location id
-func Primary(country, subdivision1 string) LocationId {
+func Primary(country country.Country, subdivision1 string) LocationId {
 	return LocationId{
-		country: strings.ToLower(country),
+		country: country,
 		primary: strings.ToLower(subdivision1),
 	}
 }
 
 // Secondary creates a Secondary location id
-func Secondary(country, subdivision1, subdivision2 string) LocationId {
+func Secondary(country country.Country, subdivision1, subdivision2 string) LocationId {
 	return LocationId{
-		country:   strings.ToLower(country),
+		country:   country,
 		primary:   strings.ToLower(subdivision1),
 		secondary: strings.ToLower(subdivision2),
 	}
 }
 
 // City creates a city location id
-func City(country, primary, city string) LocationId {
+func City(country country.Country, primary, city string) LocationId {
 	return LocationId{
-		country: strings.ToLower(country),
+		country: country,
 		primary: strings.ToLower(primary),
 		city:    strings.ToLower(city),
 	}
 }
 
 // PostalCode creates an instance of the postal code location id
-func PostalCode(country, postalCode string) LocationId {
+func PostalCode(country country.Country, postalCode string) LocationId {
 	return LocationId{
-		country:    strings.ToLower(country),
+		country:    country,
 		postalCode: postalCode,
 	}
-}
-
-// ParseId parses a location string
-func ParseId(s string) (LocationId, error) {
-	words := strings.Split(strings.ToLower(s), ":")
-	if len(words) == 2 {
-		areas := strings.Split(words[1], ",")
-		switch {
-		case len(areas) == 1 && words[0] == "country":
-			return Country(areas[0]), nil
-		case len(areas) == 2 && words[0] == "subdivision":
-			return Primary(areas[0], areas[1]), nil
-		case len(areas) == 2 && words[0] == "postal":
-			return PostalCode(areas[0], areas[1]), nil
-		case len(areas) == 3 && words[0] == "subdivision":
-			return Secondary(areas[0], areas[1], areas[2]), nil
-		case len(areas) == 3 && words[0] == "city":
-			return City(areas[0], areas[1], areas[2]), nil
-		}
-	}
-
-	return LocationId{}, tea.Errf("bad location %s", s)
 }

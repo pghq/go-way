@@ -10,6 +10,8 @@ import (
 
 	"github.com/pghq/go-tea"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pghq/go-way/country"
 )
 
 func TestMain(m *testing.M) {
@@ -116,7 +118,7 @@ func TestRadar_Get(t *testing.T) {
 		loc, err := r.Postal("US", "20017")
 		assert.Nil(t, err)
 		assert.NotNil(t, loc)
-		assert.Equal(t, "us", loc.Country)
+		assert.Equal(t, country.UnitedStatesAmerica, loc.Country)
 		assert.Equal(t, "20017", loc.PostalCode)
 		assert.Equal(t, 38.9367, loc.Latitude)
 		assert.Equal(t, -76.994, loc.Longitude)

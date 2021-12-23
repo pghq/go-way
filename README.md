@@ -30,12 +30,12 @@ if err != nil{
     panic(err)
 }
 
-loc, err = radar.City("US", "NY", "Brooklyn")
+loc, err = radar.City(country.UnitedStatesAmerica, "NY", "Brooklyn")
 if err != nil{
     panic(err)
 }
 
-loc, err = radar.Postal("US", "NY", "10027")
+loc, err = radar.Postal(country.UnitedStatesAmerica, "NY", "10027")
 if err != nil{
     panic(err)
 }

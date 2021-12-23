@@ -127,38 +127,6 @@ func TestDB_Get(t *testing.T) {
 	})
 }
 
-func TestParseId(t *testing.T) {
-	t.Parallel()
-
-	t.Run("notifies on bad location", func(t *testing.T) {
-		id, err := ParseId("")
-		assert.NotNil(t, err)
-		assert.Equal(t, "", id.String())
-	})
-
-	t.Run("notifies on success", func(t *testing.T) {
-		id, err := ParseId("country:us")
-		assert.Nil(t, err)
-		assert.Equal(t, Country("us").String(), id.String())
-
-		id, err = ParseId("subdivision:us,ny")
-		assert.Nil(t, err)
-		assert.Equal(t, Primary("us", "ny").String(), id.String())
-
-		id, err = ParseId("postal:us,20017")
-		assert.Nil(t, err)
-		assert.Equal(t, PostalCode("us", "20017").String(), id.String())
-
-		id, err = ParseId("subdivision:us,ny,kings")
-		assert.Nil(t, err)
-		assert.Equal(t, Secondary("us", "ny", "kings").String(), id.String())
-
-		id, err = ParseId("city:us,ny,brooklyn")
-		assert.Nil(t, err)
-		assert.Equal(t, City("us", "ny", "brooklyn").String(), id.String())
-	})
-}
-
 func serve(path string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, path)
