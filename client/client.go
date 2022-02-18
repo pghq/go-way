@@ -10,7 +10,7 @@ import (
 
 const (
 	// Version is the version of the client
-	Version = "0.0.12"
+	Version = "0.0.13"
 
 	// UserAgent is the default user agent for outgoing requests
 	UserAgent = "go-way/v" + Version
