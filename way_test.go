@@ -55,7 +55,7 @@ func TestNew(t *testing.T) {
 	})
 
 	t.Run("can create new instance", func(t *testing.T) {
-		r := New(GeonamesLocation(s.URL), RefreshTimeout(time.Second))
+		r := New(GeonamesLocation(s.URL), RefreshTimeout(time.Second), Countries("us"))
 		r.Wait()
 		assert.Nil(t, r.Error())
 		assert.NotNil(t, r)

@@ -41,6 +41,7 @@ type Radar struct {
 	geonamesLocation string
 	maxmindLocation  string
 	maxmindKey       string
+	countries        []string
 	refreshTimeout   time.Duration
 	errors           chan error
 	waits            chan *sync.WaitGroup
@@ -127,5 +128,12 @@ func MaxmindLocation(o string) RadarOption {
 func MaxmindKey(o string) RadarOption {
 	return func(r *Radar) {
 		r.maxmindKey = o
+	}
+}
+
+// Countries supported
+func Countries(o ...string) RadarOption {
+	return func(r *Radar) {
+		r.countries = o
 	}
 }
