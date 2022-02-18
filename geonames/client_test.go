@@ -71,6 +71,11 @@ func TestDB_Get(t *testing.T) {
 	s := serve("../testdata/sample.zip")
 	c, _ := NewClient(context.TODO(), s.URL)
 
+	t.Run("with countries", func(t *testing.T) {
+		_, err := NewClient(context.TODO(), s.URL, "us")
+		assert.Nil(t, err)
+	})
+
 	t.Run("should notify on errors", func(t *testing.T) {
 		t.Run("bad location", func(t *testing.T) {
 			_, err := c.Get(LocationId{})
