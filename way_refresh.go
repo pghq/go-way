@@ -31,7 +31,7 @@ func (r *Radar) refreshJob(_ context.Context) {
 		ctx, cancel := context.WithTimeout(ctx, r.refreshTimeout)
 		defer cancel()
 
-		gc, err := geonames.NewClient(ctx, r.geonamesLocation)
+		gc, err := geonames.NewClient(ctx, r.geonamesLocation, r.countries...)
 		if err != nil {
 			r.sendError(err)
 			return
