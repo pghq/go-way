@@ -49,7 +49,7 @@ func (c *Client) Get(id LocationId) (*Location, error) {
 
 	var fence *Location
 	return fence, c.db.View(context.Background(), func(tx ark.Txn) error {
-		var query database.QueryOption
+		var query interface{}
 		switch {
 		case id.IsCity():
 			query = database.Eq("city", id.country, id.primary, id.city)
