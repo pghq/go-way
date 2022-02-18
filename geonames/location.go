@@ -27,6 +27,7 @@ type Location struct {
 func (l *Location) Add(loc *Location) {
 	if l.bounder == nil {
 		l.bounder = s2.NewRectBounder()
+		l.bounder.AddPoint(s2.PointFromLatLng(s2.LatLngFromDegrees(l.Latitude, l.Longitude)))
 	}
 
 	l.bounder.AddPoint(s2.PointFromLatLng(s2.LatLngFromDegrees(loc.Latitude, loc.Longitude)))
