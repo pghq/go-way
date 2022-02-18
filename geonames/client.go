@@ -86,12 +86,17 @@ func (c *Client) Get(id LocationId) (*Location, error) {
 }
 
 // NewClient Creates a new GeoNames client
-func NewClient(ctx context.Context, uri string) (*Client, error) {
+func NewClient(ctx context.Context, uri string, countries ...string) (*Client, error) {
 	resp, err := client.Get(ctx, uri)
 	if err != nil {
 		return nil, tea.Stack(err)
 	}
 	defer resp.Body.Close()
+
+	countryCodes := make(map[string]struct{}, len(countries))
+	for _, countryCode := range countries {
+		countryCodes[strings.ToUpper(countryCode)] = struct{}{}
+	}
 
 	b, _ := ioutil.ReadAll(resp.Body)
 	reader := bytes.NewReader(b)
@@ -114,14 +119,27 @@ func NewClient(ctx context.Context, uri string) (*Client, error) {
 			r.Comma = '\t'
 
 			var record []string
+			i := 0
 			for {
+				if i%50000 == 0 {
+					tea.Logf(context.Background(), "debug", "processed %d locations.", i)
+				}
 				record, err = r.Read()
+				i++
 				if err != nil {
 					break
 				}
 
 				if len(record) != numColumns {
 					return tea.Errf("unexpected number of columns in csv, %d found", len(record))
+				}
+
+				countryCode := strings.ToUpper(record[0])
+				cty := country.Country(countryCode)
+				if len(countries) > 0 {
+					if _, present := countryCodes[countryCode]; !present {
+						continue
+					}
 				}
 
 				latitude, err := strconv.ParseFloat(record[9], 64)
@@ -134,7 +152,6 @@ func NewClient(ctx context.Context, uri string) (*Client, error) {
 					return tea.Stack(err)
 				}
 
-				cty := country.Country(strings.ToUpper(record[0]))
 				postalCode := strings.ToLower(record[1])
 				key := fmt.Sprintf("%s.%s", cty, postalCode)
 				location := Location{
