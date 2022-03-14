@@ -19,7 +19,7 @@ func (r *Radar) IP(addr string) (*geonames.Location, error) {
 
 	city, err := r.maxmind.Get(ip)
 	if err != nil {
-		return nil, tea.Stack(err)
+		return nil, tea.Stacktrace(err)
 	}
 
 	loc := geonames.Location{

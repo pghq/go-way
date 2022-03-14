@@ -5,9 +5,9 @@ go 1.17
 require (
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551
 	github.com/oschwald/geoip2-golang v1.5.0
-	github.com/pghq/go-ark v0.0.68
-	github.com/pghq/go-red v0.0.16
-	github.com/pghq/go-tea v0.0.49
+	github.com/pghq/go-ark v0.0.70
+	github.com/pghq/go-red v0.0.28
+	github.com/pghq/go-tea v0.0.55
 	github.com/stretchr/testify v1.7.0
 )
 
@@ -23,8 +23,6 @@ require (
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/georgysavva/scany v0.2.9 // indirect
 	github.com/getsentry/sentry-go v0.11.0 // indirect
-	github.com/go-logr/logr v1.2.1 // indirect
-	github.com/go-logr/stdr v1.2.0 // indirect
 	github.com/go-redis/redis/v8 v8.11.4 // indirect
 	github.com/go-redsync/redsync/v4 v4.4.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -57,18 +55,16 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/pressly/goose/v3 v3.4.1 // indirect
 	github.com/rs/cors v1.8.0 // indirect
-	github.com/rs/zerolog v1.25.0 // indirect
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/teambition/rrule-go v1.7.2 // indirect
 	go.opencensus.io v0.22.5 // indirect
-	go.opentelemetry.io/otel v1.3.0 // indirect
-	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.3.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.3.0 // indirect
-	go.opentelemetry.io/otel/trace v1.3.0 // indirect
+	go.uber.org/atomic v1.9.0 // indirect
+	go.uber.org/multierr v1.8.0 // indirect
+	go.uber.org/zap v1.21.0 // indirect
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97 // indirect
 	golang.org/x/net v0.0.0-20211015210444-4f30a5c0130f // indirect
 	golang.org/x/sys v0.0.0-20211007075335-d3039528d8ac // indirect
 	golang.org/x/text v0.3.6 // indirect
 	google.golang.org/protobuf v1.26.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20200601152816-913338de1bd2 // indirect
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )

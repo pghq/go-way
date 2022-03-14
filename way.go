@@ -14,7 +14,6 @@
 package way
 
 import (
-	"context"
 	"sync"
 	"time"
 
@@ -44,19 +43,10 @@ type Radar struct {
 	countries        []string
 	refreshTimeout   time.Duration
 	errors           chan error
-	waits            chan *sync.WaitGroup
-	refreshes        chan context.Context
+	refreshes        chan *sync.WaitGroup
 	bg               *red.Worker
 	geonames         *geonames.Client
 	maxmind          *maxmind.Client
-}
-
-// Wait for refresh
-func (r *Radar) Wait() {
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	r.waits <- &wg
-	wg.Wait()
 }
 
 // Error gets any background errors
@@ -84,19 +74,18 @@ func New(opts ...RadarOption) *Radar {
 		geonamesLocation: DefaultGeonamesLocation,
 		maxmindLocation:  DefaultMaxmindLocation,
 		errors:           make(chan error, 1),
-		waits:            make(chan *sync.WaitGroup),
-		refreshes:        make(chan context.Context, 1),
+		refreshes:        make(chan *sync.WaitGroup, 1),
 	}
 
-	bg := red.NewWorker(r.refreshJob)
+	bg := red.NewWorker("way", r.refreshJob)
 	for _, opt := range opts {
 		opt(&r)
 	}
 
 	r.bg = bg
 	go bg.Start()
-	go r.Refresh(context.Background())
 
+	r.Refresh()
 	return &r
 }
 
