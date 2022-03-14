@@ -46,7 +46,7 @@ func (c *Client) Get(ip net.IP) (*geoip2.City, error) {
 
 		c, err := c.reader.City(ip)
 		if err != nil {
-			return tea.Stack(err)
+			return tea.Stacktrace(err)
 		}
 
 		if c == nil || c.City.GeoNameID == 0 {
@@ -67,21 +67,21 @@ func (c *Client) Close() error {
 func NewClient(ctx context.Context, uri string) (*Client, error) {
 	resp, err := client.Get(ctx, uri)
 	if err != nil {
-		return nil, tea.Stack(err)
+		return nil, tea.Stacktrace(err)
 	}
 	defer resp.Body.Close()
 
 	b, err := ioutil.ReadAll(resp.Body)
 	stream, err := gzip.NewReader(bytes.NewReader(b))
 	if err != nil {
-		return nil, tea.Stack(err)
+		return nil, tea.Stacktrace(err)
 	}
 
 	tr := tar.NewReader(stream)
 	for {
 		header, err := tr.Next()
 		if err != nil {
-			return nil, tea.Stack(err)
+			return nil, tea.Stacktrace(err)
 		}
 
 		base := filepath.Base(header.Name)
@@ -93,7 +93,7 @@ func NewClient(ctx context.Context, uri string) (*Client, error) {
 	b, _ = ioutil.ReadAll(tr)
 	reader, err := geoip2.FromBytes(b)
 	if err != nil {
-		return nil, tea.Stack(err)
+		return nil, tea.Stacktrace(err)
 	}
 
 	c := Client{

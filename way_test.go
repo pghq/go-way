@@ -1,7 +1,6 @@
 package way
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -27,13 +26,11 @@ func TestNew(t *testing.T) {
 	t.Run("should notify on errors", func(t *testing.T) {
 		t.Run("bad geonames refresh", func(t *testing.T) {
 			r := New(GeonamesLocation("testdata/sample.zip"))
-			r.Wait()
 			assert.NotNil(t, r.Error())
 		})
 
 		t.Run("bad maxmind refresh", func(t *testing.T) {
 			r := New(GeonamesLocation(s.URL), MaxmindLocation("testdata/GeoLite2-City.tgz"))
-			r.Wait()
 			assert.NotNil(t, r.Error())
 		})
 
@@ -43,7 +40,6 @@ func TestNew(t *testing.T) {
 			}))
 
 			r := New(GeonamesLocation(s.URL))
-			r.Wait()
 			assert.NotNil(t, r.Error())
 		})
 	})
@@ -56,7 +52,6 @@ func TestNew(t *testing.T) {
 
 	t.Run("can create new instance", func(t *testing.T) {
 		r := New(GeonamesLocation(s.URL), RefreshTimeout(time.Second), Countries("us"))
-		r.Wait()
 		assert.Nil(t, r.Error())
 		assert.NotNil(t, r)
 		assert.Equal(t, r.refreshTimeout, time.Second)
@@ -74,7 +69,6 @@ func TestRadar_Refresh(t *testing.T) {
 			}))
 
 			r := New(GeonamesLocation(s.URL))
-			r.Wait()
 			assert.NotNil(t, r.Error())
 		})
 	})
@@ -83,9 +77,7 @@ func TestRadar_Refresh(t *testing.T) {
 		s := serve("testdata/sample.zip")
 		mxm := serve("testdata/GeoLite2-City.tgz")
 		r := New(GeonamesLocation(s.URL), MaxmindLocation(mxm.URL))
-		r.Wait()
-		r.Refresh(context.Background())
-		r.Wait()
+		r.Refresh()
 	})
 }
 
@@ -95,7 +87,6 @@ func TestRadar_Get(t *testing.T) {
 	s := serve("testdata/sample.zip")
 	mxm := serve("testdata/GeoLite2-City.tgz")
 	r := New(GeonamesLocation(s.URL), MaxmindLocation(mxm.URL), MaxmindKey("test-key"))
-	r.Wait()
 
 	t.Run("should notify on errors", func(t *testing.T) {
 		t.Run("cache miss", func(t *testing.T) {
@@ -143,7 +134,6 @@ func TestRadar_Envelope(t *testing.T) {
 
 	s := serve("testdata/sample.zip")
 	r := New(GeonamesLocation(s.URL))
-	r.Wait()
 
 	t.Run("should notify on errors", func(t *testing.T) {
 		t.Run("bad location", func(t *testing.T) {

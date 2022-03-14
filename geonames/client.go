@@ -67,7 +67,7 @@ func (c *Client) Get(id LocationId) (*Location, error) {
 
 		var locations []Location
 		if err := tx.List("locations", &locations, query, database.Limit(-1)); err != nil {
-			return tea.Stack(err)
+			return tea.Stacktrace(err)
 		}
 
 		var location *Location
@@ -89,7 +89,7 @@ func (c *Client) Get(id LocationId) (*Location, error) {
 func NewClient(ctx context.Context, uri string, countries ...string) (*Client, error) {
 	resp, err := client.Get(ctx, uri)
 	if err != nil {
-		return nil, tea.Stack(err)
+		return nil, tea.Stacktrace(err)
 	}
 	defer resp.Body.Close()
 
@@ -102,7 +102,7 @@ func NewClient(ctx context.Context, uri string, countries ...string) (*Client, e
 	reader := bytes.NewReader(b)
 	zr, err := zip.NewReader(reader, int64(len(b)))
 	if err != nil {
-		return nil, tea.Stack(err)
+		return nil, tea.Stacktrace(err)
 	}
 
 	if len(zr.File) != 1 {
@@ -144,12 +144,12 @@ func NewClient(ctx context.Context, uri string, countries ...string) (*Client, e
 
 				latitude, err := strconv.ParseFloat(record[9], 64)
 				if err != nil {
-					return tea.Stack(err)
+					return tea.Stacktrace(err)
 				}
 
 				longitude, err := strconv.ParseFloat(record[10], 64)
 				if err != nil {
-					return tea.Stack(err)
+					return tea.Stacktrace(err)
 				}
 
 				postalCode := strings.ToLower(record[1])
@@ -173,7 +173,7 @@ func NewClient(ctx context.Context, uri string, countries ...string) (*Client, e
 		}
 
 		if err != nil && err != io.EOF {
-			return tea.Stack(err)
+			return tea.Stacktrace(err)
 		}
 
 		return nil

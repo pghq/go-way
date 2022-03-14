@@ -3,32 +3,27 @@ package way
 import (
 	"context"
 	"strings"
+	"sync"
 
 	"github.com/pghq/go-way/geonames"
 	"github.com/pghq/go-way/maxmind"
 )
 
 // Refresh locations
-func (r *Radar) Refresh(ctx context.Context) {
-	r.refreshes <- ctx
+func (r *Radar) Refresh() {
+	wg := sync.WaitGroup{}
+	r.refreshes <- &wg
+	wg.Add(1)
+	wg.Wait()
 }
 
 // refreshJob process pending refreshes / waits
-func (r *Radar) refreshJob(_ context.Context) {
-	defer func() {
-		for {
-			select {
-			case wg := <-r.waits:
-				wg.Done()
-			default:
-				return
-			}
-		}
-	}()
-
+func (r *Radar) refreshJob() {
 	select {
-	case ctx := <-r.refreshes:
-		ctx, cancel := context.WithTimeout(ctx, r.refreshTimeout)
+	case wg := <-r.refreshes:
+		defer wg.Done()
+
+		ctx, cancel := context.WithTimeout(context.Background(), r.refreshTimeout)
 		defer cancel()
 
 		gc, err := geonames.NewClient(ctx, r.geonamesLocation, r.countries...)
